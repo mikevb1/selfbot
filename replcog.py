@@ -21,12 +21,22 @@ def get_syntax_error(e):
 class REPL:
     def __init__(self, bot):
         self.bot = bot
-        self.repls = set()
+        self.repls = {}
         self.last_eval = None
+
+    async def repl_summon(self, channel):
+        embed = discord.Embed.from_data(self.repls[channel.id].embeds[0])
+        await self.bot.delete_message(self.repls.pop(channel.id))
+        self.repls[channel.id] = await self.bot.send_message(channel, embed=embed)
 
     @commands.command(pass_context=True)
     async def repl(self, ctx):
+        """Based on R.Danny's REPL and taciturasa's modification to use embed."""
         msg = ctx.message
+
+        if msg.channel.id in self.repls:
+            await self.repl_summon(msg.channel)
+            return
 
         variables = {
             'discord': discord,
@@ -40,22 +50,24 @@ class REPL:
             '__': None
         }
 
-        if msg.channel.id in self.repls:
-            await self.bot.edit_message(msg, 'Already running a REPL here.')
-            return
+        embed = discord.Embed(description='Enter code to exec/eval. `exit`/`quit` to exit.')
+        embed.set_author(name='Interactive Python Shell', icon_url='http://i.imgur.com/5BFecvA.png')
+        self.repls[msg.channel.id] = await self.bot.say(embed=embed)
 
-        self.repls.add(msg.channel.id)
-        await self.bot.edit_message(msg, 'Entering REPL.')
         while True:
             response = await self.bot.wait_for_message(author=msg.author, channel=msg.channel,
                                                        check=lambda m: m.content.startswith('`'))
 
             cleaned = cleanup_code(response.content)
 
-            if cleaned in ('quit', 'exit', 'exit()'):
-                await self.bot.edit_message(response, 'Exiting REPL.')
-                self.bot.repls.remove(msg.channel.id)
+            if cleaned in ('quit', 'exit'):
+                embed.colour = discord.Colour.default()
+                await self.bot.edit_message(self.repls[msg.channel.id], embed=embed)
+                self.repls.pop(msg.channel.id)
                 return
+
+            if discord.utils.get(self.bot.messages, id=self.repls[msg.channel.id].id) is None:
+                self.repls[msg.channel.id] = await self.bot.say(embed=embed)
 
             executor = exec
             if cleaned.count('\n') == 0:
@@ -71,12 +83,15 @@ class REPL:
                 try:
                     code = compile(cleaned, '<repl session>', 'exec')
                 except SyntaxError as e:
-                    await self.bot.edit_message(response, response.content + '\n' + get_syntax_error(e))
+                    embed.add_field(name='>>> ' + cleaned, value=get_syntax_error(e), inline=False)
+                    embed.colour = discord.Colour.red()
+                    embed._fields = embed._fields[-7:]
+                    self.repls[msg.channel.id] = await self.bot.edit_message(
+                        self.repls[msg.channel.id], embed=embed)
                     continue
 
             variables['message'] = response
 
-            fmt = None
             stdout = io.StringIO()
 
             try:
@@ -86,26 +101,22 @@ class REPL:
                         result = await result
             except Exception as e:
                 value = stdout.getvalue()
-                fmt = '```py\n{}{}\n```'.format(value, traceback.format_exc())
+                embed.colour = discord.Colour.red()
+                output = '```py\n{}{}\n```'.format(value, traceback.format_exc().split('\n')[-2])
             else:
                 value = stdout.getvalue()
                 variables['__'] = result
+                embed.colour = discord.Colour.green()
                 if result is not None:
-                    fmt = '```py\n{}{}\n```'.format(value, result)
-                    variables['last'] = result
+                    output = '```py\n{}{}\n```'.format(value, result)
                 elif value:
-                    fmt = '```py\n{}\n```'.format(value)
+                    output = '```py\n{}\n```'.format(value)
 
-            try:
-                if fmt is not None:
-                    if len(fmt) > 2000:
-                        await self.bot.edit_message(response, response.content + '\n' + 'Result too big to be printed.')
-                    else:
-                        await self.bot.edit_message(response, response.content + '\n' + fmt)
-            except discord.Forbidden:
-                pass
-            except discord.HTTPException as e:
-                await self.bot.edit_message(response, response.content + '\n' + 'Unexpected error: `{}`'.format(e))
+            await self.bot.delete_message(response)
+            embed.add_field(name='>>> ' + cleaned, value=output, inline=False)
+            embed._fields = embed._fields[-7:]
+            self.repls[msg.channel.id] = await self.bot.edit_message(
+                self.repls[msg.channel.id], embed=embed)
 
     @commands.command(pass_context=True)
     async def py(self, ctx, *, code: str):
