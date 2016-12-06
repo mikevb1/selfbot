@@ -33,6 +33,7 @@ class REPL:
     async def repl(self, ctx):
         """Based on R.Danny's REPL and taciturasa's modification to use embed."""
         msg = ctx.message
+        await self.bot.delete_message(msg)
 
         if msg.channel.id in self.repls:
             await self.repl_summon(msg.channel)
@@ -57,8 +58,10 @@ class REPL:
         while True:
             response = await self.bot.wait_for_message(author=msg.author, channel=msg.channel,
                                                        check=lambda m: m.content.startswith('`'))
+            await self.bot.delete_message(response)
 
             cleaned = cleanup_code(response.content)
+            semi_split = '; '.join(l.strip() for l in cleaned.split('\n'))
 
             if cleaned in ('quit', 'exit'):
                 embed.colour = discord.Colour.default()
@@ -83,7 +86,7 @@ class REPL:
                 try:
                     code = compile(cleaned, '<repl session>', 'exec')
                 except SyntaxError as e:
-                    embed.add_field(name='>>> ' + cleaned, value=get_syntax_error(e), inline=False)
+                    embed.add_field(name='>>> ' + semi_split, value=get_syntax_error(e), inline=False)
                     embed.colour = discord.Colour.red()
                     embed._fields = embed._fields[-7:]
                     self.repls[msg.channel.id] = await self.bot.edit_message(
@@ -111,9 +114,10 @@ class REPL:
                     output = '```py\n{}{}\n```'.format(value, result)
                 elif value:
                     output = '```py\n{}\n```'.format(value)
+                else:
+                    output = '```py\nNo response, assumed successful.\n```'
 
-            await self.bot.delete_message(response)
-            embed.add_field(name='>>> ' + cleaned, value=output, inline=False)
+            embed.add_field(name='>>> ' + semi_split, value=output, inline=False)
             embed._fields = embed._fields[-7:]
             self.repls[msg.channel.id] = await self.bot.edit_message(
                 self.repls[msg.channel.id], embed=embed)

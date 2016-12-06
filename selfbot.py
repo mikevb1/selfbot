@@ -35,15 +35,6 @@ async def mybot(ctx, *, text):
 @bot.event
 async def on_message(msg):
     if msg.author.id == bot.user.id:
-        if any(h in msg.content for h in ('http://', 'https://')):
-            words = []
-            for ind, word in enumerate(msg.content.split()):
-                if word.startswith(('http://', 'https://')):
-                    words.append('<{}>'.format(word))
-                else:
-                    words.append(word)
-            await asyncio.sleep(1)
-            msg = await bot.edit_message(msg, ' '.join(words))
         await bot.process_commands(msg)
 
 
