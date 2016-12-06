@@ -24,6 +24,12 @@ class REPL:
         self.repls = {}
         self.last_eval = None
 
+    async def on_message_delete(self, message):
+        repl = self.repls.get(message.channel.id)
+        if repl is None or repl.id != message.id:
+            return
+        self.repls[message.channel.id] = None
+
     async def repl_summon(self, channel):
         embed = discord.Embed.from_data(self.repls[channel.id].embeds[0])
         await self.bot.delete_message(self.repls.pop(channel.id))
@@ -63,14 +69,14 @@ class REPL:
             cleaned = cleanup_code(response.content)
             semi_split = '; '.join(l.strip() for l in cleaned.split('\n'))
 
+            if self.repls[msg.channel.id] is None:
+                self.repls[msg.channel.id] = await self.bot.say(embed=embed)
+
             if cleaned in ('quit', 'exit'):
                 embed.colour = discord.Colour.default()
                 await self.bot.edit_message(self.repls[msg.channel.id], embed=embed)
                 self.repls.pop(msg.channel.id)
                 return
-
-            if discord.utils.get(self.bot.messages, id=self.repls[msg.channel.id].id) is None:
-                self.repls[msg.channel.id] = await self.bot.say(embed=embed)
 
             executor = exec
             if cleaned.count('\n') == 0:
