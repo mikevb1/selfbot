@@ -128,9 +128,11 @@ class REPL:
             self.repls[msg.channel.id] = await self.bot.edit_message(
                 self.repls[msg.channel.id], embed=embed)
 
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, aliases=['spy'])
     async def py(self, ctx, *, code: str):
         msg = ctx.message
+        if ctx.invoked_with == 'spy':
+            await self.bot.delete_message(msg)
         code = code.strip('` ')
         cleaned = code.replace('{', '{{').replace('}', '}}')
         out = '```ocaml\nInput  ⮞ {}\nOutput ⮞ {{}}\n```'.format(cleaned)
@@ -154,6 +156,8 @@ class REPL:
         else:
             edit = out.format(result)
         self.last_eval = result
+        if ctx.invoked_with == 'spy':
+            return
         await self.bot.edit_message(ctx.message, edit)
 
 

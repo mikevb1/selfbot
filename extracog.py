@@ -2,8 +2,12 @@ import unicodedata
 import random
 
 from discord.ext import commands
+import discord
 import zenhan
 import dice
+
+
+UNIURL = "http://www.fileformat.info/info/unicode/char/{}/index.htm"
 
 
 class Extra:
@@ -53,13 +57,26 @@ class Extra:
     @commands.command(pass_context=True)
     async def charinfo(self, ctx, *, chars):
         """Get unicode character info."""
-        msg = []
+        if not chars:
+            return
         chars = unicodedata.normalize('NFC', chars)
+        if len(chars) > 25:
+            return
+        embed = discord.Embed()
         for char in chars:
             uc = hex(ord(char))[2:]
-            msg.append('{char} - `{char}` - {name}'.format(
-                name=unicodedata.name(char, '`\\U%s`' % uc.upper()), char=char))
-        await self.bot.edit_message(ctx.message, '\n'.join(msg))
+            name = unicodedata.name(char, 'unknown')
+            if name in {'SPACE', 'EM QUAD', 'EN QUAD'} or ' SPACE' in name:
+                char = '" "'
+            if len(uc) <= 4:
+                code = '`\\u%s`' % uc.lower().zfill(4)
+            else:
+                code = '`\\U%s`' % uc.upper().zfill(8)
+            embed.add_field(name=name,
+                            value='{char} [{code}]({url})'.format(
+                                char=char, code=code, url=UNIURL.format(uc)))
+        await self.bot.delete_message(ctx.message)
+        await self.bot.say(embed=embed)
 
     @commands.command(pass_context=True)
     async def fw(self, ctx, *, chars):
