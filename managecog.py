@@ -1,37 +1,38 @@
 from discord.ext import commands
 import discord
 
+
 class Management:
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(no_pm=True)
     @commands.has_permissions(kick_members=True)
-    async def kick(self, *, member: discord.Member):
+    async def kick(self, ctx, *, member: discord.Member):
         """Kick user from server if you have permission.
 
         You must have permission to kick members.
         """
         try:
-            await self.bot.kick(member)
+            await ctx.message.guild.kick(member)
         except:
-            await self.bot.say('\N{THUMBS DOWN SIGN}')
+            await ctx.message.edit(ctx.message.content + ' \N{THUMBS DOWN SIGN}')
         else:
-            await self.bot.say('\N{THUMBS UP SIGN}')
+            await ctx.message.edit(ctx.message.content + ' \N{THUMBS UP SIGN}')
 
     @commands.command(no_pm=True)
     @commands.has_permissions(ban_members=True)
-    async def ban(self, *, member: discord.Member):
+    async def ban(self, ctx, *, member: discord.Member):
         """Ban user from server.
 
         You must have permission to ban members.
         """
         try:
-            await self.bot.ban(member)
+            await ctx.message.guild.ban(member)
         except:
-            await self.bot.say('\N{THUMBS DOWN SIGN}')
+            await ctx.message.edit(ctx.message.content + ' \N{THUMBS DOWN SIGN}')
         else:
-            await self.bot.say('\N{THUMBS UP SIGN}')
+            await ctx.message.edit(ctx.message.content + ' \N{THUMBS UP SIGN}')
 
 
 def setup(bot):

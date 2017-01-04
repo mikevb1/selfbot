@@ -31,15 +31,15 @@ class REPL:
         self.repls[message.channel.id] = None
 
     async def repl_summon(self, channel):
-        embed = discord.Embed.from_data(self.repls[channel.id].embeds[0])
-        await self.bot.delete_message(self.repls.pop(channel.id))
-        self.repls[channel.id] = await self.bot.send_message(channel, embed=embed)
+        embed = self.repls[channel.id].embeds[0]
+        await self.repls.pop(channel.id).delete()
+        self.repls[channel.id] = await channel.send(embed=embed)
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def repl(self, ctx):
         """Based on R.Danny's REPL and taciturasa's modification to use embed."""
         msg = ctx.message
-        await self.bot.delete_message(msg)
+        await msg.delete()
 
         if msg.channel.id in self.repls:
             await self.repl_summon(msg.channel)
@@ -50,7 +50,7 @@ class REPL:
             'ctx': ctx,
             'bot': self.bot,
             'message': msg,
-            'server': msg.server,
+            'guild': msg.guild,
             'channel': msg.channel,
             'author': msg.author,
             'me': msg.author,
@@ -59,22 +59,22 @@ class REPL:
 
         embed = discord.Embed(description='Enter code to exec/eval. `exit`/`quit` to exit.')
         embed.set_author(name='Interactive Python Shell', icon_url='http://i.imgur.com/5BFecvA.png')
-        self.repls[msg.channel.id] = await self.bot.say(embed=embed)
+        self.repls[msg.channel.id] = await ctx.send(embed=embed)
 
         while True:
             response = await self.bot.wait_for_message(author=msg.author, channel=msg.channel,
                                                        check=lambda m: m.content.startswith('`'))
-            await self.bot.delete_message(response)
+            await response.delete()
 
             cleaned = cleanup_code(response.content)
             semi_split = '; '.join(l.strip() for l in cleaned.split('\n'))
 
             if self.repls[msg.channel.id] is None:
-                self.repls[msg.channel.id] = await self.bot.say(embed=embed)
+                self.repls[msg.channel.id] = await ctx.send(embed=embed)
 
             if cleaned in ('quit', 'exit'):
                 embed.colour = discord.Colour.default()
-                await self.bot.edit_message(self.repls[msg.channel.id], embed=embed)
+                await self.repls[msg.channel.id].edit(embed=embed)
                 self.repls.pop(msg.channel.id)
                 return
 
@@ -95,8 +95,7 @@ class REPL:
                     embed.add_field(name='>>> ' + semi_split, value=get_syntax_error(e), inline=False)
                     embed.colour = discord.Colour.red()
                     embed._fields = embed._fields[-7:]
-                    self.repls[msg.channel.id] = await self.bot.edit_message(
-                        self.repls[msg.channel.id], embed=embed)
+                    self.repls[msg.channel.id] = await self.repls[msg.channel.id].edit(embed=embed)
                     continue
 
             variables['message'] = response
@@ -125,14 +124,13 @@ class REPL:
 
             embed.add_field(name='>>> ' + semi_split, value=output, inline=False)
             embed._fields = embed._fields[-7:]
-            self.repls[msg.channel.id] = await self.bot.edit_message(
-                self.repls[msg.channel.id], embed=embed)
+            self.repls[msg.channel.id] = await self.repls[msg.channel.id].edit(embed=embed)
 
-    @commands.command(pass_context=True, aliases=['spy'])
+    @commands.command(aliases=['spy'])
     async def py(self, ctx, *, code: str):
         msg = ctx.message
         if ctx.invoked_with == 'spy':
-            await self.bot.delete_message(msg)
+            await msg.delete()
         code = code.strip('` ')
         cleaned = code.replace('{', '{{').replace('}', '}}')
         out = '```ocaml\nInput  ⮞ {}\nOutput ⮞ {{}}\n```'.format(cleaned)
@@ -142,7 +140,7 @@ class REPL:
             'bot': self.bot,
             'ctx': ctx,
             'message': msg,
-            'server': msg.server,
+            'guild': msg.guild,
             'channel': msg.channel,
             'me': msg.author,
             '__': self.last_eval
@@ -158,11 +156,11 @@ class REPL:
         self.last_eval = result
         if ctx.invoked_with == 'spy':
             return
-        await self.bot.edit_message(ctx.message, edit)
+        await ctx.message.edit(edit)
 
-    @commands.command(pass_context=True)
-    async def code(self, ctx, *, text):
-        await self.bot.edit_message(ctx.message, '```\n' + text + '\n```')
+    @commands.command()
+    async def code(self, ctx, *, text: str):
+        await ctx.message.edit('```\n' + text + '\n```')
 
 
 def setup(bot):

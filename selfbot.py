@@ -1,5 +1,4 @@
 import traceback
-import asyncio
 import logging
 
 from discord.ext import commands
@@ -19,7 +18,7 @@ async def on_ready():
     await bot.change_presence(status=discord.Status.invisible)
 
 
-@bot.command()
+@bot.command(pass_context=False)
 async def reload(cog):
     try:
         bot.unload_extension(cog + 'cog')
@@ -29,9 +28,9 @@ async def reload(cog):
         await bot.say("{}: {}".format(type(e).__name__, e))
 
 
-@bot.command(pass_context=True)
+@bot.command()
 async def mybot(ctx, *, text):
-    await bot.edit_message(ctx.message, ctx.message.content.replace('$mybot', 'https://github.com/mikevb1/discordbot'))
+    await ctx.message.edit(ctx.message.content.replace('$mybot', 'https://github.com/mikevb1/discordbot', 1))
 
 
 @bot.event
@@ -46,15 +45,13 @@ async def on_command_error(exc, ctx):
     if hasattr(ctx.command, 'on_error') or isinstance(exc, commands.CommandNotFound):
         return
     logging.warning('Ignoring exception in command {}'.format(ctx.command))
-    if isinstance(ctx.message.channel, discord.PrivateChannel):
-        if str(ctx.message.channel.type) == 'group':
-            msg = 'Message was "{0.content}" in {0.channel}.'
-        else:
-            msg = 'Message was "{0.content}" in {0.channel}.'
+    if isinstance(ctx.message.channel, discord.GroupChannel):
+        msg = 'Message was "{0.content}" by {0.author} in {0.channel}.'
+    elif isinstance(ctx.message.channel, discord.DMChannel):
+        msg = 'Message was "{0.content}" in {0.channel}.'
     else:
-        msg = 'Message was "{0.content}" in "{0.channel}" on "{0.server}".'
+        msg = 'Message was "{0.content}" by {0.author} in "{0.channel}" on "{0.guild}".'
     msg = msg.format(ctx.message)
-
     exc = getattr(exc, 'original', exc)
     tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     logging.error('\n'.join((msg, tb)))

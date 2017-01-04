@@ -15,11 +15,11 @@ class Extra:
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def ping(self, ctx):
-        await self.bot.edit_message(ctx.message, 'Pong!')
+        await ctx.message.edit('Pong!')
 
-    @commands.command(pass_context=True, name='roll')
+    @commands.command(name='roll')
     async def roll_dice(self, ctx, roll: dice.roll = None):
         """In format CdS, rolls C dice each with S sides.
 
@@ -39,11 +39,10 @@ class Extra:
             roll = random.randint(1, 6)
         elif isinstance(roll, list):
             roll = ', '.join(map(str, roll))
-        await self.bot.edit_message(ctx.message, roll)
+        await ctx.message.edit(roll)
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def flip(self, ctx):
-        """Flip any number of coins."""
         side = None
         rand = random.randint(0, 6000)
         if rand:
@@ -53,9 +52,9 @@ class Extra:
                 side = 'No.'
         else:  # 1/6001 chance of being edge
             side = 'Maybe.'
-        await self.bot.edit_message(ctx.message, side)
+        await ctx.message.edit(side)
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def charinfo(self, ctx, *, chars):
         """Get unicode character info."""
         if not chars:
@@ -76,15 +75,15 @@ class Extra:
             embed.add_field(name=name,
                             value='{char} [{code}]({url})'.format(
                                 char=char, code=code, url=UNIURL.format(uc)))
-        await self.bot.delete_message(ctx.message)
-        await self.bot.say(embed=embed)
+        await ctx.message.delete()
+        await ctx.send(embed=embed)
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def fw(self, ctx, *, chars):
         """Make full-width meme text."""
-        await self.bot.edit_message(ctx.message, zenhan.h2z(chars))
+        await ctx.message.edit(zenhan.h2z(chars))
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def team(self, ctx, members=0, teams=2, *exclude):
         """Randomise teams of discord members.
 
@@ -93,16 +92,16 @@ class Extra:
         [teams] = number of teams
         [exclude] = space-separated list of member ids to exclude
         """
-        await self.bot.delete_message(ctx.message)
+        await ctx.message.delete()
         names = [m.mention for m in ctx.message.author.voice_channel.voice_members
                  if m.id not in exclude]
         random.shuffle(names)
-        members = members or ceil(len(names)/teams)
+        members = members or ceil(len(names) / teams)
         embed = discord.Embed()
         for team in range(teams):
             embed.add_field(name='Team {}'.format(team + 1),
                             value='\n'.join(names[team::teams]) or 'None')
-        await self.bot.say(embed=embed)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
