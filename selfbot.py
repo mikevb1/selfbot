@@ -1,4 +1,6 @@
+import traceback
 import asyncio
+import logging
 
 from discord.ext import commands
 import discord
@@ -29,7 +31,7 @@ async def reload(cog):
 
 @bot.command(pass_context=True)
 async def mybot(ctx, *, text):
-    await bot.edit_message(ctx.message, ctx.message.content.replace('$mybot', 'https://github.com/mikevb1/discordbot', 1))
+    await bot.edit_message(ctx.message, ctx.message.content.replace('$mybot', 'https://github.com/mikevb1/discordbot'))
 
 
 @bot.event
@@ -40,7 +42,22 @@ async def on_message(msg):
 
 @bot.event
 async def on_command_error(exc, ctx):
-    print(exc)
+    """Emulate default on_command_error and add server + channel info."""
+    if hasattr(ctx.command, 'on_error') or isinstance(exc, commands.CommandNotFound):
+        return
+    logging.warning('Ignoring exception in command {}'.format(ctx.command))
+    if isinstance(ctx.message.channel, discord.PrivateChannel):
+        if str(ctx.message.channel.type) == 'group':
+            msg = 'Message was "{0.content}" in {0.channel}.'
+        else:
+            msg = 'Message was "{0.content}" in {0.channel}.'
+    else:
+        msg = 'Message was "{0.content}" in "{0.channel}" on "{0.server}".'
+    msg = msg.format(ctx.message)
+
+    exc = getattr(exc, 'original', exc)
+    tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    logging.error('\n'.join((msg, tb)))
 
 
 if __name__ == '__main__':

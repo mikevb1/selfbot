@@ -160,6 +160,10 @@ class REPL:
             return
         await self.bot.edit_message(ctx.message, edit)
 
+    @commands.command(pass_context=True)
+    async def code(self, ctx, *, text):
+        await self.bot.edit_message(ctx.message, '```\n' + text + '\n```')
+
 
 def setup(bot):
     bot.add_cog(REPL(bot))

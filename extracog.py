@@ -1,3 +1,4 @@
+from math import ceil
 import unicodedata
 import random
 
@@ -82,6 +83,26 @@ class Extra:
     async def fw(self, ctx, *, chars):
         """Make full-width meme text."""
         await self.bot.edit_message(ctx.message, zenhan.h2z(chars))
+
+    @commands.command(pass_context=True)
+    async def team(self, ctx, members=0, teams=2, *exclude):
+        """Randomise teams of discord members.
+
+        All members must be in the same voice channel.
+        [members] = number of members per team, 0 to split evenly
+        [teams] = number of teams
+        [exclude] = space-separated list of member ids to exclude
+        """
+        await self.bot.delete_message(ctx.message)
+        names = [m.mention for m in ctx.message.author.voice_channel.voice_members
+                 if m.id not in exclude]
+        random.shuffle(names)
+        members = members or ceil(len(names)/teams)
+        embed = discord.Embed()
+        for team in range(teams):
+            embed.add_field(name='Team {}'.format(team + 1),
+                            value='\n'.join(names[team::teams]) or 'None')
+        await self.bot.say(embed=embed)
 
 
 def setup(bot):
