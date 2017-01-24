@@ -72,8 +72,11 @@ async def on_command_error(exc, ctx):
     tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     logging.error('\n'.join((msg, tb)))
 
+
 def _logout(self):
     self.loop.create_task(self.logout())
+
+
 bot._logout = _logout
 
 
