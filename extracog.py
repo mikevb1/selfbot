@@ -1,6 +1,8 @@
 from math import ceil
 import unicodedata
+import logging
 import random
+import json
 
 from discord.ext import commands
 import discord
@@ -17,7 +19,7 @@ class Extra:
 
     @commands.command()
     async def ping(self, ctx):
-        await ctx.message.edit('Pong!')
+        await ctx.message.edit(content='Pong!')
 
     @commands.command(name='roll')
     async def roll_dice(self, ctx, roll: dice.roll = None):
@@ -39,7 +41,7 @@ class Extra:
             roll = random.randint(1, 6)
         elif isinstance(roll, list):
             roll = ', '.join(map(str, roll))
-        await ctx.message.edit(roll)
+        await ctx.message.edit(content=roll)
 
     @commands.command()
     async def flip(self, ctx):
@@ -52,7 +54,11 @@ class Extra:
                 side = 'No.'
         else:  # 1/6001 chance of being edge
             side = 'Maybe.'
-        await ctx.message.edit(side)
+        await ctx.message.edit(content=side)
+
+    @commands.command()
+    async def choose(self, ctx, *options):
+        await ctx.message.edit(content=random.choice(options))
 
     @commands.command()
     async def charinfo(self, ctx, *, chars):
@@ -68,20 +74,16 @@ class Extra:
             name = unicodedata.name(char, 'unknown')
             if name in {'SPACE', 'EM QUAD', 'EN QUAD'} or ' SPACE' in name:
                 char = '" "'
-            if len(uc) <= 4:
-                code = '`\\u%s`' % uc.lower().zfill(4)
-            else:
-                code = '`\\U%s`' % uc.upper().zfill(8)
-            embed.add_field(name=name,
-                            value='{char} [{code}]({url})'.format(
-                                char=char, code=code, url=UNIURL.format(uc)))
+            short = len(uc) <= 4
+            code = f"\\{'u' if short else 'U'}{uc.lower().zfill(4 if short else 8)}"
+            embed.add_field(name=name, value=f'{char} [{code}]({UNIURL.format(uc)})')
         await ctx.message.delete()
         await ctx.send(embed=embed)
 
     @commands.command()
     async def fw(self, ctx, *, chars):
         """Make full-width meme text."""
-        await ctx.message.edit(zenhan.h2z(chars))
+        await ctx.message.edit(content=zenhan.h2z(chars))
 
     @commands.command()
     async def team(self, ctx, members=0, teams=2, *exclude):
@@ -93,13 +95,13 @@ class Extra:
         [exclude] = space-separated list of member ids to exclude
         """
         await ctx.message.delete()
-        names = [m.mention for m in ctx.message.author.voice_channel.voice_members
+        names = [m.mention for m in ctx.message.author.voice.channel.voice_members
                  if m.id not in exclude]
         random.shuffle(names)
         members = members or ceil(len(names) / teams)
         embed = discord.Embed()
         for team in range(teams):
-            embed.add_field(name='Team {}'.format(team + 1),
+            embed.add_field(name=f'Team {team + 1}',
                             value='\n'.join(names[team::teams]) or 'None')
         await ctx.send(embed=embed)
 

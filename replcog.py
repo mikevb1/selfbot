@@ -15,7 +15,11 @@ def cleanup_code(content):
 
 
 def get_syntax_error(e):
-    return '```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```'.format(e, '^', type(e).__name__)
+    return f'```py\n{e.text}{"^":>{e.offset}}\n{type(e).__name__}: {e}```'
+
+
+def exception_signature():
+    return traceback.format_exc().split('\n')[-2]
 
 
 class REPL:
@@ -49,7 +53,7 @@ class REPL:
             'discord': discord,
             'ctx': ctx,
             'bot': self.bot,
-            'message': msg,
+            'msg': msg,
             'guild': msg.guild,
             'channel': msg.channel,
             'author': msg.author,
@@ -98,7 +102,7 @@ class REPL:
                     self.repls[msg.channel.id] = await self.repls[msg.channel.id].edit(embed=embed)
                     continue
 
-            variables['message'] = response
+            variables['msg'] = response
 
             stdout = io.StringIO()
 
@@ -110,15 +114,15 @@ class REPL:
             except Exception as e:
                 value = stdout.getvalue()
                 embed.colour = discord.Colour.red()
-                output = '```py\n{}{}\n```'.format(value, traceback.format_exc().split('\n')[-2])
+                output = '```py\n{}{}\n```'.format(value, exception_signature())
             else:
                 value = stdout.getvalue()
                 variables['__'] = result
                 embed.colour = discord.Colour.green()
                 if result is not None:
-                    output = '```py\n{}{}\n```'.format(value, result)
+                    output = f'```py\n{value}{result}\n```'
                 elif value:
-                    output = '```py\n{}\n```'.format(value)
+                    output = f'```py\n{value}\n```'
                 else:
                     output = '```py\nNo response, assumed successful.\n```'
 
@@ -133,13 +137,13 @@ class REPL:
             await msg.delete()
         code = code.strip('` ')
         cleaned = code.replace('{', '{{').replace('}', '}}')
-        out = '```ocaml\nInput  ⮞ {}\nOutput ⮞ {{}}\n```'.format(cleaned)
+        out = f'```ocaml\nInput  ⮞ {cleaned}\nOutput ⮞ {{}}\n```'
         result = None
         env = {
             'discord': discord,
             'bot': self.bot,
             'ctx': ctx,
-            'message': msg,
+            'msg': msg,
             'guild': msg.guild,
             'channel': msg.channel,
             'me': msg.author,
@@ -150,17 +154,17 @@ class REPL:
             if inspect.isawaitable(result):
                 result = await result
         except Exception as e:
-            edit = out.format(type(e).__name__ + ': ' + str(e))
+            edit = out.format(exception_signature())
         else:
             edit = out.format(result)
-        self.last_eval = result
+            self.last_eval = result
         if ctx.invoked_with == 'spy':
             return
-        await ctx.message.edit(edit)
+        await ctx.message.edit(content=edit)
 
     @commands.command()
     async def code(self, ctx, *, text: str):
-        await ctx.message.edit('```\n' + text + '\n```')
+        await ctx.message.edit(content=f'```\n{text}\n```')
 
 
 def setup(bot):

@@ -16,9 +16,9 @@ class Management:
         try:
             await ctx.message.guild.kick(member)
         except:
-            await ctx.message.edit(ctx.message.content + ' \N{THUMBS DOWN SIGN}')
+            await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS DOWN SIGN}')
         else:
-            await ctx.message.edit(ctx.message.content + ' \N{THUMBS UP SIGN}')
+            await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS UP SIGN}')
 
     @commands.command(no_pm=True)
     @commands.has_permissions(ban_members=True)
@@ -30,9 +30,9 @@ class Management:
         try:
             await ctx.message.guild.ban(member)
         except:
-            await ctx.message.edit(ctx.message.content + ' \N{THUMBS DOWN SIGN}')
+            await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS DOWN SIGN}')
         else:
-            await ctx.message.edit(ctx.message.content + ' \N{THUMBS UP SIGN}')
+            await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS UP SIGN}')
 
 
 def setup(bot):
