@@ -65,20 +65,27 @@ class REPL:
         embed.set_author(name='Interactive Python Shell', icon_url='http://i.imgur.com/5BFecvA.png')
         self.repls[msg.channel.id] = await ctx.send(embed=embed)
 
+        def response_check(response):
+            return (response.content.startswith('`') and
+                    response.author == msg.author and
+                    response.channel == msg.channel)
+
+        async def update():
+            if self.repls[msg.channel.id] is not None:
+                await self.repls[msg.channel.id].edit(embed=embed)
+            else:
+                self.repls[msg.channel.id] = await ctx.send(embed=embed)
+
         while True:
-            response = await self.bot.wait_for_message(author=msg.author, channel=msg.channel,
-                                                       check=lambda m: m.content.startswith('`'))
+            response = await self.bot.wait_for('message', check=response_check)
             await response.delete()
 
             cleaned = cleanup_code(response.content)
             semi_split = '; '.join(l.strip() for l in cleaned.split('\n'))
 
-            if self.repls[msg.channel.id] is None:
-                self.repls[msg.channel.id] = await ctx.send(embed=embed)
-
             if cleaned in ('quit', 'exit'):
                 embed.colour = discord.Colour.default()
-                await self.repls[msg.channel.id].edit(embed=embed)
+                await update()
                 self.repls.pop(msg.channel.id)
                 return
 
@@ -99,7 +106,7 @@ class REPL:
                     embed.add_field(name='>>> ' + semi_split, value=get_syntax_error(e), inline=False)
                     embed.colour = discord.Colour.red()
                     embed._fields = embed._fields[-7:]
-                    await self.repls[msg.channel.id].edit(embed=embed)
+                    await update()
                     continue
 
             variables['msg'] = response
@@ -128,7 +135,7 @@ class REPL:
 
             embed.add_field(name='>>> ' + semi_split, value=output, inline=False)
             embed._fields = embed._fields[-3:]
-            await self.repls[msg.channel.id].edit(embed=embed)
+            await update()
 
     @commands.command(aliases=['spy'])
     async def py(self, ctx, *, code: str):
@@ -161,10 +168,6 @@ class REPL:
         if ctx.invoked_with == 'spy':
             return
         await ctx.message.edit(content=edit)
-
-    @commands.command()
-    async def code(self, ctx, *, text: str):
-        await ctx.message.edit(content=f'```\n{text}\n```')
 
 
 def setup(bot):
