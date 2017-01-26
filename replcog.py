@@ -99,7 +99,7 @@ class REPL:
                     embed.add_field(name='>>> ' + semi_split, value=get_syntax_error(e), inline=False)
                     embed.colour = discord.Colour.red()
                     embed._fields = embed._fields[-7:]
-                    self.repls[msg.channel.id] = await self.repls[msg.channel.id].edit(embed=embed)
+                    await self.repls[msg.channel.id].edit(embed=embed)
                     continue
 
             variables['msg'] = response
@@ -127,8 +127,8 @@ class REPL:
                     output = '```py\nNo response, assumed successful.\n```'
 
             embed.add_field(name='>>> ' + semi_split, value=output, inline=False)
-            embed._fields = embed._fields[-7:]
-            self.repls[msg.channel.id] = await self.repls[msg.channel.id].edit(embed=embed)
+            embed._fields = embed._fields[-3:]
+            await self.repls[msg.channel.id].edit(embed=embed)
 
     @commands.command(aliases=['spy'])
     async def py(self, ctx, *, code: str):

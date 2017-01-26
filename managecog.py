@@ -6,6 +6,20 @@ class Management:
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(aliases=['kill', 'restart'])
+    async def exit(self, ctx, code: int = None):
+        """Restart/kill bot."""
+        codes = {'restart': 2, 'kill': 1}
+        code = codes.get(ctx.invoked_with, code)
+        if code is None:
+            msg = await ctx.message.edit(content='Not exiting.')
+            await asyncio.sleep(3)
+            await msg.delete()
+            return
+        await ctx.message.delete()
+        self.bot.exit_status = code
+        await self.bot.logout()
+
     @commands.command(no_pm=True)
     @commands.has_permissions(kick_members=True)
     async def kick(self, ctx, *, member: discord.Member):
