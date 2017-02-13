@@ -22,8 +22,18 @@ else:
 
 
 class SelfBot(commands.Bot):
+    async def __init__(self, config, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.config = config
+
     async def on_ready(self):
         await self.change_presence(status=discord.Status.invisible)
+        if config.get('error_channel'):
+            guild_id, channel_id = map(int, config['error_channel'].split('/'))
+            guild = self.get_guild(guild_id)
+            self.error_channel = guild.get_channel(channel_id)
+        else:
+            self.error_channel = None
 
     async def on_message(self, msg):
         if msg.author.id == self.user.id:
@@ -41,9 +51,11 @@ class SelfBot(commands.Bot):
         msg = msg.format(ctx.message)
         exc = getattr(exc, 'original', exc)
         tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        if self.error_channel:
+            await self.error_channel.send('\n'.join((msg, tb)))
         logging.error('\n'.join((msg, tb)))
 
-    def _logout(self):
+    def logout_(self):
         self.loop.create_task(self.logout())
 
 
@@ -69,13 +81,8 @@ async def reload(ctx, cog):
         await ctx.message.delete()
 
 
-@bot.command()
-async def mybot(ctx, *, text):
-    await ctx.message.edit(content=ctx.message.content.replace('$mybot', 'https://github.com/mikevb1/discordbot', 1))
-
-
 if __name__ == '__main__':
-    token = 'mfa.dEzp4UE4goS2cRIdPCYXTxo0jA4K0VcDFWeWbKH8MD3uNL-oVsgN9p8SCc-1039rwUOXAN9TKKBqzdBcuxTr'
-    bot.loop.add_signal_handler(signal.SIGTERM, bot._logout)
-    bot.run(token, bot=False)
+    config = json.load(open('config.json'))
+    bot.loop.add_signal_handler(signal.SIGTERM, bot.logout_)
+    bot.run(config.pop('token'), bot=False)
     sys.exit(getattr(bot, 'exit_status', 0))

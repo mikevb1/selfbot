@@ -12,9 +12,9 @@ class Management:
         codes = {'restart': 2, 'kill': 1}
         code = codes.get(ctx.invoked_with, code)
         if code is None:
-            msg = await ctx.message.edit(content='Not exiting.')
+            await ctx.message.edit(content='Not exiting.')
             await asyncio.sleep(3)
-            await msg.delete()
+            await ctx.message.delete()
             return
         await ctx.message.delete()
         self.bot.exit_status = code

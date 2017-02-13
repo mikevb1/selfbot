@@ -137,7 +137,7 @@ class REPL:
             embed._fields = embed._fields[-3:]
             await update()
 
-    @commands.command(aliases=['spy'])
+    @commands.command(aliases=['spy'])  # spy for silent eval
     async def py(self, ctx, *, code: str):
         msg = ctx.message
         if ctx.invoked_with == 'spy':
