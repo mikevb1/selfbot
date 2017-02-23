@@ -39,6 +39,28 @@ class REPL:
         await self.repls.pop(channel.id).delete()
         self.repls[channel.id] = await channel.send(embed=embed)
 
+    async def maybe_upload(self, content, cur_len=0, max_len=2000,
+                           title='Selfbot Eval', lang='python3'):
+        """Checks length of content and returns either the content or link to paste.
+
+        Recommended langs are: python3, py3tb (traceback), pycon (interactive session)
+        """
+        contents = str(content)
+        if len(contents) <= max_len - cur_len:
+            return contents
+        data = {
+            'content': contents,
+            'syntax': lang,
+            'title': title,
+            'poster': str(self.bot.user),
+            'expiry_days': 1
+        }
+        resp = await self.bot.request('http://dpaste.com/api/v2/',
+                                      method='POST', data=data, type_='text')
+        if resp.status == 201:
+            return resp.data
+        return 'Result too long and error occurred while posting to dpaste.'
+
     @commands.command()
     async def repl(self, ctx):
         """Based on R.Danny's REPL and taciturasa's modification to use embed."""
@@ -160,14 +182,24 @@ class REPL:
             result = eval(code, env)
             if inspect.isawaitable(result):
                 result = await result
+            if isinstance(result, discord.Embed):
+                if ctx.invoked_with == 'spy':
+                    await ctx.send(embed=result)
+                else:
+                    await msg.edit(content=f'⮞ {cleaned}', embed=result)
+                return
         except Exception as e:
-            edit = out.format(exception_signature())
+            edit = out.format(await self.maybe_upload(exception_signature(),
+                                                      len(out) - 2,
+                                                      title=code,
+                                                      lang='py3tb'))
         else:
-            edit = out.format(result)
+            edit = out.format(await self.maybe_upload(result, len(out) - 2,
+                                                      title=code))
             self.last_eval = result
         if ctx.invoked_with == 'spy':
             return
-        await ctx.message.edit(content=edit)
+        await msg.edit(content=edit)
 
 
 def setup(bot):

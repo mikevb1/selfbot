@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.6
+from collections import namedtuple
 import traceback
 import asyncio
 import logging
@@ -7,6 +8,7 @@ import json
 import sys
 
 from discord.ext import commands
+import aiohttp
 import discord
 
 from replcog import exception_signature
@@ -22,10 +24,16 @@ else:
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
+Response = namedtuple('Response', 'status data')
+
+
 class SelfBot(commands.Bot):
     def __init__(self, config, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = config
+        self.http_ = aiohttp.ClientSession(
+            loop=self.loop,
+            headers={'User-Agent': 'Discord Selfbot'})
 
     async def on_ready(self):
         await self.change_presence(status=discord.Status.invisible)
@@ -59,6 +67,32 @@ class SelfBot(commands.Bot):
     def logout_(self):
         self.loop.create_task(self.logout())
 
+    async def _request(self, url, type_='json', *, timeout=10, method='GET', **kwargs):
+        if type_ not in {'json', 'read', 'text'}:
+            return
+        if kwargs.get('data') and method == 'GET':
+            method = 'POST'
+        async with self.http_.request(method, url, timeout=timeout, **kwargs) as resp:
+            data = None
+            try:
+                data = await getattr(resp, type_)()
+            except:
+                logging.exception(f'Failed getting type {type_} from "{url}".')
+            return Response(resp.status, data)
+
+    async def request(self, *args, ignore_timeout=True, **kwargs):
+        """Utility request function.
+
+        type_ is the method to get data from response
+        """
+        if ignore_timeout:
+            try:
+                return await self._request(*args, **kwargs)
+            except asyncio.TimeoutError:
+                return Response(None, None)
+        else:
+            return await self._request(*args, **kwargs)
+
 
 if __name__ == '__main__':
     config = json.load(open('config.json'))
@@ -70,7 +104,6 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(f"Couldn't load {cog}\n{type(e).__name__}: {e}")
 
-
     @bot.command()
     async def reload(ctx, cog):
         try:
@@ -79,10 +112,9 @@ if __name__ == '__main__':
         except Exception as e:
             msg = exception_signature()
             logging.error(msg)
-            await bot.say(msg)
+            await ctx.send(msg)
         else:
             await ctx.message.delete()
-
 
     bot.loop.add_signal_handler(signal.SIGTERM, bot.logout_)
     bot.run(config.pop('token'), bot=False)
