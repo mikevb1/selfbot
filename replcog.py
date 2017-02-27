@@ -61,18 +61,11 @@ class REPL:
         contents = str(content)
         if len(contents) <= max_len - cur_len:
             return contents
-        data = {
-            'content': contents,
-            'syntax': lang,
-            'title': title,
-            'poster': str(self.bot.user),
-            'expiry_days': 1
-        }
-        resp = await self.bot.request('http://dpaste.com/api/v2/',
-                                      method='POST', data=data, type_='text')
+        resp = await self.bot.request('https://hastebin.com/documents',
+                                      data=contents, type_='text')
         if resp.status == 201:
-            return resp.data
-        return 'Result too long and error occurred while posting to dpaste.'
+            return f'https://hastebin.com/{resp.data}'
+        return 'Result too long and error occurred while posting to hastebin.'
 
     @commands.command()
     async def repl(self, ctx):
