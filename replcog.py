@@ -38,7 +38,7 @@ class REPL:
                 lines.append(f'... {line}')
         link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
         if link != 'None':
-            lines.append(link if link == '' else "''")
+            lines.append(link if link != '' else "''")
         return '```py\n' + '\n'.join(lines) + '\n```'
 
     async def on_message_delete(self, message):
