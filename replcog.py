@@ -1,5 +1,6 @@
 from contextlib import redirect_stdout
 import traceback
+import textwrap
 import inspect
 import io
 
@@ -27,6 +28,18 @@ class REPL:
         self.bot = bot
         self.repls = {}
         self.last_eval = None
+
+    async def eval_output(self, inp, out):
+        lines = []
+        for ind, line in enumerate(inp.splitlines()):
+            if ind == 0:
+                lines.append(f'>>> {line}')
+            else:
+                lines.append(f'... {line}')
+        link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
+        if link != 'None':
+            lines.append(link if link == '' else "''")
+        return '```py\n' + '\n'.join(lines) + '\n```'
 
     async def on_message_delete(self, message):
         repl = self.repls.get(message.channel.id)
@@ -75,8 +88,11 @@ class REPL:
             'discord': discord,
             'ctx': ctx,
             'bot': self.bot,
+            'client': self.bot,
             'msg': msg,
+            'message': msg,
             'guild': msg.guild,
+            'server': msg.guild,
             'channel': msg.channel,
             'author': msg.author,
             'me': msg.author,
@@ -159,21 +175,88 @@ class REPL:
             embed._fields = embed._fields[-3:]
             await update()
 
+    @commands.command(name='eval', aliases=['seval'])  # seval for silent eval
+    async def eval_(self, ctx, *, code: str):
+        """Alternative to `py` that executes code inside a coroutine.
+
+        Allows multiple lines and `await`ing.
+
+        This is RoboDanny's latest `eval` command adapted for a selfbot.
+        """
+        msg = ctx.message
+        silent = ctx.invoked_with == 'seval'
+        if silent:
+            await msg.delete()
+
+        code = cleanup_code(code)
+        env = {
+            'discord': discord,
+            'bot': self.bot,
+            'client': self.bot,
+            'ctx': ctx,
+            'msg': msg,
+            'message': msg,
+            'guild': msg.guild,
+            'server': msg.guild,
+            'channel': msg.channel,
+            'me': msg.author,
+        }
+        stdout = io.StringIO()
+
+        to_compile = 'async def _func():\n%s' % textwrap.indent(code, '  ')
+
+        try:
+            exec(to_compile, env)
+        except SyntaxError as e:
+            if silent:
+                await ctx.send(get_syntax_error(e))
+            else:
+                await msg.edit(content=await self.eval_output(code, get_syntax_error(e)))
+            return
+
+        func = env['_func']
+        try:
+            with redirect_stdout(stdout):
+                ret = await func()
+        except Exception as e:
+            value = stdout.getvalue()
+            if silent:
+                await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+            else:
+                await msg.edit(content=await self.eval_output(code, f'{value}{traceback.format_exc()}'))
+        else:
+            value = stdout.getvalue()
+            if isinstance(ret, discord.Embed):
+                if silent:
+                    await ctx.send(embed=ret)
+                else:
+                    await msg.delete()
+                    await ctx.send(await self.eval_output(code, ''), embed=ret)
+                return
+            if silent:
+                await ctx.send(value if ret is None else f'{value}{ret}')
+            else:
+                await msg.edit(content=await self.eval_output(code, value if ret is None
+                                                                    else f'{value}{ret}'))  # NOQA
+
     @commands.command(aliases=['spy'])  # spy for silent eval
     async def py(self, ctx, *, code: str):
         msg = ctx.message
-        if ctx.invoked_with == 'spy':
+        silent = ctx.invoked_with == 'spy'
+        if silent:
             await msg.delete()
-        code = code.strip('` ')
-        cleaned = code.replace('{', '{{').replace('}', '}}')
-        out = f'```ocaml\nInput  ⮞ {cleaned}\nOutput ⮞ {{}}\n```'
+
+        code = cleanup_code(code)
         result = None
         env = {
             'discord': discord,
             'bot': self.bot,
+            'client': self.bot,
             'ctx': ctx,
             'msg': msg,
+            'message': msg,
             'guild': msg.guild,
+            'server': msg.guild,
             'channel': msg.channel,
             'me': msg.author,
             '__': self.last_eval
@@ -183,21 +266,21 @@ class REPL:
             if inspect.isawaitable(result):
                 result = await result
             if isinstance(result, discord.Embed):
-                if ctx.invoked_with == 'spy':
+                if silent:
                     await ctx.send(embed=result)
                 else:
-                    await msg.edit(content=f'⮞ {cleaned}', embed=result)
+                    await msg.delete()
+                    await ctx.send(await self.eval_output(code), embed=result)
                 return
         except Exception as e:
-            edit = out.format(await self.maybe_upload(exception_signature(),
-                                                      len(out) - 2,
-                                                      title=code,
-                                                      lang='py3tb'))
+            edit = await self.eval_output(code, exception_signature())
+            if silent:
+                await ctx.send('```py\n{exception_signature()}\n```')
         else:
-            edit = out.format(await self.maybe_upload(result, len(out) - 2,
-                                                      title=code))
+            edit = await self.eval_output(code, result)
             self.last_eval = result
-        if ctx.invoked_with == 'spy':
+
+        if silent:
             return
         await msg.edit(content=edit)
 
