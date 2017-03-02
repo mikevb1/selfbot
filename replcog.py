@@ -29,7 +29,7 @@ class REPL:
         self.repls = {}
         self.last_eval = None
 
-    async def eval_output(self, inp, out):
+    async def eval_output(self, inp, out=None):
         lines = []
         for ind, line in enumerate(inp.splitlines()):
             if ind == 0:
@@ -224,7 +224,7 @@ class REPL:
                     await ctx.send(embed=ret)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code, ''), embed=ret)
+                    await ctx.send(await self.eval_output(code), embed=ret)
                 return
             if silent:
                 await ctx.send(value if ret is None else f'{value}{ret}')

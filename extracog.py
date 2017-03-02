@@ -95,7 +95,7 @@ class Extra:
         [exclude] = space-separated list of member ids to exclude
         """
         await ctx.message.delete()
-        names = [m.mention for m in ctx.message.author.voice.channel.voice_members
+        names = [m.mention for m in ctx.message.author.voice.channel.members
                  if m.id not in exclude]
         random.shuffle(names)
         members = members or ceil(len(names) / teams)
