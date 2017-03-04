@@ -262,10 +262,10 @@ class REPL:
                 result = await result
             if isinstance(result, discord.Embed):
                 if silent:
-                    await ctx.send(value, embed=result)
+                    await ctx.send(embed=result)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code, value), embed=result)
+                    await ctx.send(await self.eval_output(code), embed=result)
                 return
         except Exception as e:
             edit = await self.eval_output(code, exception_signature())
