@@ -36,8 +36,10 @@ class REPL:
                 lines.append(f'>>> {line}')
             else:
                 lines.append(f'... {line}')
-        link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
-        if link != 'None':
+        if out is not None:
+            link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
+            if link.startswith('\n'):
+                link = "''" + link
             lines.append(link if link != '' else "''")
         return '```py\n' + '\n'.join(lines) + '\n```'
 
@@ -221,10 +223,10 @@ class REPL:
             value = stdout.getvalue()
             if isinstance(ret, discord.Embed):
                 if silent:
-                    await ctx.send(embed=ret)
+                    await ctx.send(value, embed=ret)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code), embed=ret)
+                    await ctx.send(await self.eval_output(code, value), embed=ret)
                 return
             if silent:
                 await ctx.send(value if ret is None else f'{value}{ret}')
@@ -260,10 +262,10 @@ class REPL:
                 result = await result
             if isinstance(result, discord.Embed):
                 if silent:
-                    await ctx.send(embed=result)
+                    await ctx.send(value, embed=result)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code), embed=result)
+                    await ctx.send(await self.eval_output(code, value), embed=result)
                 return
         except Exception as e:
             edit = await self.eval_output(code, exception_signature())
