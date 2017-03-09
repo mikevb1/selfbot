@@ -16,7 +16,7 @@ def cleanup_code(content):
 
 
 def get_syntax_error(e):
-    return f'```py\n{e.text}{"^":>{e.offset}}\n{type(e).__name__}: {e}```'
+    return f'```py\n{e.text}{"^":>{e.offset}}\n{type(e).__name__}: {e}\n```'
 
 
 def exception_signature():
@@ -206,7 +206,7 @@ class REPL:
             if silent:
                 await ctx.send(get_syntax_error(e))
             else:
-                await msg.edit(content=await self.eval_output(code, get_syntax_error(e)))
+                await msg.edit(content=await self.eval_output(code, '\n'.join(get_syntax_error(e).splitlines()[1:-1])))
             return
 
         func = env['_func']
@@ -215,10 +215,12 @@ class REPL:
                 ret = await func()
         except Exception as e:
             value = stdout.getvalue()
+            exc = traceback.format_exc().splitlines()
+            exc = '\n'.join([exc[0], *exc[3:]])
             if silent:
-                await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+                await ctx.send(f'```py\n{value}{exc}\n```')
             else:
-                await msg.edit(content=await self.eval_output(code, f'{value}{traceback.format_exc()}'))
+                await msg.edit(content=await self.eval_output(code, f'{value}{exc}'))
         else:
             value = stdout.getvalue()
             if isinstance(ret, discord.Embed):
