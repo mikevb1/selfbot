@@ -27,7 +27,7 @@ else:
 Response = namedtuple('Response', 'status data')
 
 
-class SelfBot(commands.Bot):
+class Bot(commands.Bot):
     def __init__(self, config, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = config
@@ -96,7 +96,7 @@ class SelfBot(commands.Bot):
 
 if __name__ == '__main__':
     config = json.load(open('config.json'))
-    bot = SelfBot(config=config, command_prefix='$', self_bot=True)
+    bot = Bot(config=config, command_prefix='$', self_bot=True)
 
     for cog in {'test', 'repl', 'manage', 'extra'}:
         try:
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         except Exception as e:
             msg = exception_signature()
             logging.error(msg)
-            await ctx.send(msg)
+            await ctx.message.edit(msg)
         else:
             await ctx.message.delete()
 
