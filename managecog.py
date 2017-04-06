@@ -20,7 +20,8 @@ class Management:
         self.bot.exit_status = code
         await self.bot.logout()
 
-    @commands.command(no_pm=True)
+    @commands.command()
+    @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     async def kick(self, ctx, *, member: discord.Member):
         """Kick user from server if you have permission.
@@ -34,7 +35,8 @@ class Management:
         else:
             await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS UP SIGN}')
 
-    @commands.command(no_pm=True)
+    @commands.command()
+    @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     async def ban(self, ctx, *, member: discord.Member):
         """Ban user from server.
