@@ -48,24 +48,20 @@ class REPL:
             link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
             if link.startswith('\n'):
                 link = "''" + link
-            lines.append(link if link != '' else "''")
+            if link != '':
+                lines.append(link)
         return '```py\n' + '\n'.join(lines) + '\n```'
 
-    async def maybe_upload(self, content, cur_len=0, max_len=2000,
-                           title='Selfbot Eval', lang='python3'):
-        """Checks length of content and returns either the content or link to paste.
-
-        Recommended langs are: python3, py3tb (traceback), pycon (interactive session)
-        """
+    async def maybe_upload(self, content, cur_len=0, max_len=2000):
+        """Checks length of content and returns either the content or link to paste."""
         contents = str(content)
         if len(contents) >= 2 and contents[-2] == '\n':
             contents = contents[:-2] + contents[-1]
         if len(contents) <= max_len - cur_len:
             return contents
-        resp = await self.bot.request('https://hastebin.com/documents',
-                                      data=contents, type_='text')
-        if resp.status == 201:
-            return f'https://hastebin.com/{resp.data}'
+        resp = await self.bot.request('https://hastebin.com/documents', data=contents)
+        if resp.status == 200:
+            return f'https://hastebin.com/{resp.data["key"]}'
         return 'Result too long and error occurred while posting to hastebin.'
 
     @commands.command(name='eval', aliases=['seval'])  # seval for silent eval
@@ -92,7 +88,7 @@ class REPL:
             'guild': msg.guild,
             'server': msg.guild,
             'channel': msg.channel,
-            'me': msg.author,
+            'me': msg.author
         }
         stdout = io.StringIO()
 
