@@ -48,7 +48,7 @@ class Bot(commands.Bot):
         if msg.author.id == self.user.id:
             await self.process_commands(msg)
 
-    async def on_command_error(self, exc, ctx):
+    async def on_command_error(self, ctx, exc):
         """Emulate default on_command_error and add server + channel info."""
         if hasattr(ctx.command, 'on_error') or isinstance(exc, commands.CommandNotFound):
             return

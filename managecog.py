@@ -23,13 +23,13 @@ class Management:
     @commands.command()
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
-    async def kick(self, ctx, *, member: discord.Member):
+    async def kick(self, ctx, member: discord.Member, *, reason=None):
         """Kick user from server if you have permission.
 
         You must have permission to kick members.
         """
         try:
-            await ctx.message.guild.kick(member)
+            await ctx.message.guild.kick(member, reason=reason)
         except:
             await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS DOWN SIGN}')
         else:
@@ -38,13 +38,13 @@ class Management:
     @commands.command()
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, *, member: discord.Member):
+    async def ban(self, ctx, member: discord.Member, *, reason=None):
         """Ban user from server.
 
         You must have permission to ban members.
         """
         try:
-            await ctx.message.guild.ban(member)
+            await ctx.message.guild.ban(member, reason=reason)
         except:
             await ctx.message.edit(content=f'{ctx.message.content} \N{THUMBS DOWN SIGN}')
         else:
