@@ -4,7 +4,6 @@ import traceback
 import asyncio
 import logging
 import signal
-import json
 import sys
 
 from discord.ext import commands
@@ -12,6 +11,7 @@ import aiohttp
 import discord
 
 from replcog import exception_signature
+import config
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -28,17 +28,16 @@ Response = namedtuple('Response', 'status data')
 
 
 class Bot(commands.Bot):
-    def __init__(self, config, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.config = config
         self.http_ = aiohttp.ClientSession(
             loop=self.loop,
             headers={'User-Agent': 'Discord Selfbot'})
 
     async def on_ready(self):
         await self.change_presence(status=discord.Status.invisible)
-        if config.get('error_channel'):
-            guild_id, channel_id = map(int, config['error_channel'].split('/'))
+        if config.error_channel:
+            guild_id, channel_id = map(int, config.error_channel.split('/'))
             guild = self.get_guild(guild_id)
             self.error_channel = guild.get_channel(channel_id)
         else:
@@ -95,8 +94,7 @@ class Bot(commands.Bot):
 
 
 if __name__ == '__main__':
-    config = json.load(open('config.json'))
-    bot = Bot(config=config, command_prefix='$', self_bot=True)
+    bot = Bot(command_prefix='$', self_bot=True)
 
     for cog in {'test', 'repl', 'manage', 'extra'}:
         try:
@@ -117,5 +115,5 @@ if __name__ == '__main__':
             await ctx.message.delete()
 
     bot.loop.add_signal_handler(signal.SIGTERM, bot.logout_)
-    bot.run(config.pop('token'), bot=False)
+    bot.run(config.token, bot=False)
     sys.exit(getattr(bot, 'exit_status', 0))
