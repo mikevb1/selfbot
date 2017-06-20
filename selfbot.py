@@ -10,7 +10,7 @@ from discord.ext import commands
 import aiohttp
 import discord
 
-from replcog import exception_signature
+from replcog import UPPER_PATH, exception_signature
 import config
 
 logging.basicConfig(level=logging.WARNING)
@@ -29,19 +29,22 @@ Response = namedtuple('Response', 'status data')
 
 class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, status=discord.Status.invisible, **kwargs)
         self.http_ = aiohttp.ClientSession(
             loop=self.loop,
             headers={'User-Agent': 'Discord Selfbot'})
 
     async def on_ready(self):
-        await self.change_presence(status=discord.Status.invisible)
         if config.error_channel:
             guild_id, channel_id = map(int, config.error_channel.split('/'))
             guild = self.get_guild(guild_id)
             self.error_channel = guild.get_channel(channel_id)
         else:
             self.error_channel = None
+
+    async def on_resumed(self):
+        me = self.guilds[0].me
+        await self.change_presence(game=me.game, status=discord.Status.invisible)
 
     async def on_message(self, msg):
         if msg.author.id == self.user.id:
@@ -52,13 +55,10 @@ class Bot(commands.Bot):
         if hasattr(ctx.command, 'on_error') or isinstance(exc, commands.CommandNotFound):
             return
         logging.warning(f'Ignoring exception in command {ctx.command}')
-        if isinstance(ctx.message.channel, (discord.GroupChannel, discord.DMChannel)):
-            msg = 'Message was "{0.content}" in {0.channel}.'
-        else:
-            msg = 'Message was "{0.content}" by {0.author} in "{0.channel}" on "{0.guild}".'
+        msg = ctx.message.content
         msg = msg.format(ctx.message)
         exc = getattr(exc, 'original', exc)
-        tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__)).replace(UPPER_PATH, '...')
         if self.error_channel:
             await self.error_channel.send('\n'.join((msg, tb)))
         logging.error('\n'.join((msg, tb)))
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         except Exception as e:
             msg = exception_signature()
             logging.error(msg)
-            await ctx.message.edit(msg)
+            await ctx.message.edit(content=msg)
         else:
             await ctx.message.delete()
 

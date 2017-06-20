@@ -3,9 +3,13 @@ import traceback
 import textwrap
 import inspect
 import io
+import os
 
 from discord.ext import commands
 import discord
+
+
+UPPER_PATH = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
 
 
 def cleanup_code(content):
@@ -37,32 +41,21 @@ class REPL:
         self.bot = bot
         self.last_eval = None
 
-    async def eval_output(self, inp, out=None):
+    def eval_output(self, inp, out=None):
         lines = []
         for ind, line in enumerate(inp.splitlines()):
             if ind == 0:
                 lines.append(f'>>> {line}')
             else:
                 lines.append(f'... {line}')
+        if sum(len(line) for line in lines) + len(out or '') + (out or '').count('\n') > 2000:
+            out = 'Output too long.'
         if out is not None:
-            link = await self.maybe_upload(out, len('```py\n' + '\n'.join(lines) + '\n\n```'))
-            if link.startswith('\n'):
-                link = "''" + link
-            if link != '':
-                lines.append(link)
+            if out.startswith('\n'):
+                out = "''" + out
+            if out != '':
+                lines.append(out)
         return '```py\n' + '\n'.join(lines) + '\n```'
-
-    async def maybe_upload(self, content, cur_len=0, max_len=2000):
-        """Checks length of content and returns either the content or link to paste."""
-        contents = str(content)
-        if len(contents) >= 2 and contents[-2] == '\n':
-            contents = contents[:-2] + contents[-1]
-        if len(contents) <= max_len - cur_len:
-            return contents
-        resp = await self.bot.request('https://hastebin.com/documents', data=contents)
-        if resp.status == 200:
-            return f'https://hastebin.com/{resp.data["key"]}'
-        return 'Result too long and error occurred while posting to hastebin.'
 
     @commands.command(name='eval', aliases=['seval'])  # seval for silent eval
     async def eval_(self, ctx, *, code: cleanup_code):
@@ -100,7 +93,7 @@ class REPL:
             if silent:
                 await ctx.send(get_syntax_error(e))
             else:
-                await msg.edit(content=await self.eval_output(code, '\n'.join(get_syntax_error(e).splitlines()[1:-1])))
+                await msg.edit(content=self.eval_output(code, '\n'.join(get_syntax_error(e).splitlines()[1:-1])))
             return
 
         func = env['_func']
@@ -109,12 +102,12 @@ class REPL:
                 ret = await func()
         except Exception as e:
             value = stdout.getvalue()
-            exc = traceback.format_exc().splitlines()
+            exc = traceback.format_exc().replace(UPPER_PATH, '...').splitlines()
             exc = '\n'.join([exc[0], *exc[3:]])
             if silent:
                 await ctx.send(f'```py\n{value}{exc}\n```')
             else:
-                await msg.edit(content=await self.eval_output(code, f'{value}{exc}'))
+                await msg.edit(content=self.eval_output(code, f'{value}{exc}'))
         else:
             value = stdout.getvalue()
             if isinstance(ret, discord.Embed):
@@ -122,12 +115,12 @@ class REPL:
                     await ctx.send(value, embed=ret)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code, value), embed=ret)
+                    await ctx.send(self.eval_output(code, value), embed=ret)
                 return
             if silent:
                 await ctx.send(value if ret is None else f'{value}{rep(ret)}')
             else:
-                await msg.edit(content=await self.eval_output(code, value if ret is None
+                await msg.edit(content=self.eval_output(code, value if ret is None
                                                                     else f'{value}{rep(ret)}'))  # NOQA
 
     @commands.command(aliases=['spy'])  # spy for silent eval
@@ -161,14 +154,14 @@ class REPL:
                     await ctx.send(embed=result)
                 else:
                     await msg.delete()
-                    await ctx.send(await self.eval_output(code), embed=result)
+                    await ctx.send(self.eval_output(code), embed=result)
                 return
         except Exception as e:
-            edit = await self.eval_output(code, exception_signature())
+            edit = self.eval_output(code, exception_signature())
             if silent:
                 await ctx.send('```py\n{exception_signature()}\n```')
         else:
-            edit = await self.eval_output(code, rep(result))
+            edit = self.eval_output(code, rep(result))
             self.last_eval = result
 
         if silent:
