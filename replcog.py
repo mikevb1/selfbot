@@ -1,4 +1,6 @@
 from contextlib import redirect_stdout
+from timeit import timeit
+from dis import dis
 import traceback
 import textwrap
 import inspect
@@ -36,6 +38,24 @@ def print_(*args, **kwargs):
     print(*new_args, **kwargs)
 
 
+def get_env(ctx):
+    return dict(
+        print=print_,
+        timeit=timeit,
+        dis=dis,
+        discord=discord,
+        bot=ctx.bot,
+        client=ctx.bot,
+        ctx=ctx,
+        msg=ctx.message,
+        message=ctx.message,
+        guild=ctx.guild,
+        server=ctx.guild,
+        channel=ctx.channel,
+        me=ctx.me
+    )
+
+
 class REPL:
     def __init__(self, bot):
         self.bot = bot
@@ -70,19 +90,7 @@ class REPL:
         if silent:
             await msg.delete()
 
-        env = {
-            'discord': discord,
-            'print': print_,
-            'bot': self.bot,
-            'client': self.bot,
-            'ctx': ctx,
-            'msg': msg,
-            'message': msg,
-            'guild': msg.guild,
-            'server': msg.guild,
-            'channel': msg.channel,
-            'me': msg.author
-        }
+        env = get_env(ctx)
         stdout = io.StringIO()
 
         to_compile = 'async def _func():\n%s' % textwrap.indent(code, '  ')
@@ -131,20 +139,8 @@ class REPL:
             await msg.delete()
 
         result = None
-        env = {
-            'discord': discord,
-            'print': print_,
-            'bot': self.bot,
-            'client': self.bot,
-            'ctx': ctx,
-            'msg': msg,
-            'message': msg,
-            'guild': msg.guild,
-            'server': msg.guild,
-            'channel': msg.channel,
-            'me': msg.author,
-            '__': self.last_eval
-        }
+        env = get_env(ctx)
+        env['__'] = self.last_eval
         try:
             result = eval(code, env)
             if inspect.isawaitable(result):
