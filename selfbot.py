@@ -55,8 +55,7 @@ class Bot(commands.Bot):
         if hasattr(ctx.command, 'on_error') or isinstance(exc, commands.CommandNotFound):
             return
         logging.warning(f'Ignoring exception in command {ctx.command}')
-        msg = ctx.message.content
-        msg = msg.format(ctx.message)
+        msg = f'Content: {ctx.message.content}'
         exc = getattr(exc, 'original', exc)
         tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__)).replace(UPPER_PATH, '...')
         if self.error_channel:
